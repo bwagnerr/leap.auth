@@ -4,6 +4,7 @@ from setuptools import setup
 
 import os
 
+
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
@@ -15,12 +16,11 @@ setup(name='leap-srp',
       author_email='pixelated-team@thoughtworks.com',
       url='http://leap.se',
       packages=[
-        'leap',
+          'leap'
       ],
       install_requires=[
-          "srp",
-          "requests"
+          'srp',
+          'requests'
       ],
       test_suite='nose.collector',
-      tests_require=['nose']
-)
+      tests_require=['nose'])
