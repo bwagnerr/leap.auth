@@ -4,6 +4,7 @@ import logging
 import requests
 import srp
 import json
+import re
 
 from requests.adapters import HTTPAdapter
 
@@ -24,43 +25,21 @@ logger = logging.getLogger(__name__)
 
 class SRPAuth(object):
 
-    LOGIN_KEY = "login"
-    A_KEY = "A"
-    CLIENT_AUTH_KEY = "client_auth"
-    SESSION_ID_KEY = "_session_id"
-    USER_VERIFIER_KEY = 'user[password_verifier]'
-    USER_SALT_KEY = 'user[password_salt]'
-    AUTHORIZATION_KEY = "Authorization"
-
     def __init__(self, api_uri, ca_cert_path, api_version=1):
 
         self.api_uri = api_uri
         self.api_version = api_version
         self.ca_cert_path = ca_cert_path
 
-        # **************************************************** #
-        # Dependency injection helpers, override this for more
-        # granular testing
-        self._fetcher = requests
-        # **************************************************** #
-
-        self._reset_session()
-
-        # User credentials stored for password changing checks
-        self._username = None
-        self._password = None
-
-    def _reset_session(self):
-
-        self._session = self._fetcher.session()
-
-        adapter = HTTPAdapter(max_retries=30)
-
+    def reset_session(self):
+        adapter = HTTPAdapter(max_retries=50)
+        self._session = requests.session()
         self._session.mount('https://', adapter)
+        self.session_id = None
 
     def _authentication_preprocessing(self, username, password):
 
-        logger.debug("Authentication preprocessing...")
+        logger.debug('Authentication preprocessing...')
 
         user = srp.User(username.encode('utf-8'),
                         password.encode('utf-8'),
@@ -71,16 +50,16 @@ class SRPAuth(object):
 
     def _start_authentication(self, username, A):
 
-        logger.debug("Starting authentication process...")
+        logger.debug('Starting authentication process...')
         try:
             auth_data = {
-                self.LOGIN_KEY: username,
-                self.A_KEY: binascii.hexlify(A)
+                'login': username,
+                'A': binascii.hexlify(A)
             }
-            sessions_url = "%s/%s/%s/" % \
+            sessions_url = '%s/%s/%s/' % \
                 (self.api_uri,
                  self.api_version,
-                 "sessions")
+                 'sessions')
 
             ca_cert_path = self.ca_cert_path
 
@@ -89,54 +68,54 @@ class SRPAuth(object):
                                               verify=ca_cert_path,
                                               timeout=30)
         except requests.exceptions.ConnectionError as e:
-            logger.error("No connection made (salt): {0!r}".format(e))
+            logger.error('No connection made (salt): {0!r}'.format(e))
             raise SRPAuthConnectionError()
         except Exception as e:
-            logger.error("Unknown error: %r" % (e,))
+            logger.error('Unknown error: %r' % (e,))
             raise SRPAuthenticationError()
 
         if init_session.status_code not in (200,):
-            logger.error("No valid response (salt): "
-                         "Status code = %r. Content: %r" %
+            logger.error('No valid response (salt): '
+                         'Status code = %r. Content: %r' %
                          (init_session.status_code, init_session.content))
             if init_session.status_code == 422:
-                logger.error("Invalid username or password.")
+                logger.error('Invalid username or password.')
                 raise SRPAuthBadUserOrPassword()
 
-            logger.error("There was a problem with authentication.")
+            logger.error('There was a problem with authentication.')
             raise SRPAuthBadStatusCode()
 
         json_content = json.loads(init_session.content)
-        salt = json_content.get("salt", None)
-        B = json_content.get("B", None)
+        salt = json_content.get('salt', None)
+        B = json_content.get('B', None)
 
         if salt is None:
-            logger.error("The server didn't send the salt parameter.")
+            logger.error('The server didn\'t send the salt parameter.')
             raise SRPAuthNoSalt()
         if B is None:
-            logger.error("The server didn't send the B parameter.")
+            logger.error('The server didn\'t send the B parameter.')
             raise SRPAuthNoB()
 
         return salt, B
 
     def _process_challenge(self, user, salt_B, username):
-        logger.debug("Processing challenge...")
+        logger.debug('Processing challenge...')
         try:
             salt, B = salt_B
             unhex_salt = _safe_unhexlify(salt)
             unhex_B = _safe_unhexlify(B)
         except (TypeError, ValueError) as e:
-            logger.error("Bad data from server: %r" % (e,))
+            logger.error('Bad data from server: %r' % (e,))
             raise SRPAuthBadDataFromServer()
         M = user.process_challenge(unhex_salt, unhex_B)
 
-        auth_url = "%s/%s/%s/%s" % (self.api_uri,
+        auth_url = '%s/%s/%s/%s' % (self.api_uri,
                                     self.api_version,
-                                    "sessions",
+                                    'sessions',
                                     username)
 
         auth_data = {
-            self.CLIENT_AUTH_KEY: binascii.hexlify(M)
+            'client_auth': binascii.hexlify(M)
         }
 
         try:
@@ -145,26 +124,26 @@ class SRPAuth(object):
                                             verify=self.ca_cert_path,
                                             timeout=30)
         except requests.exceptions.ConnectionError as e:
-            logger.error("No connection made (HAMK): %r" % (e,))
+            logger.error('No connection made (HAMK): %r' % (e,))
             raise SRPAuthConnectionError()
 
         if auth_result.status_code == 422:
-            error = ""
+            error = ''
             try:
-                error = json.loads(auth_result.content).get("errors", "")
+                error = json.loads(auth_result.content).get('errors', '')
             except ValueError:
-                logger.error("Problem parsing the received response: %s"
+                logger.error('Problem parsing the received response: %s'
                              % (auth_result.content,))
             except AttributeError:
-                logger.error("Expecting a dict but something else was "
-                             "received: %s", (auth_result.content,))
-            logger.error("[%s] Wrong password (HAMK): [%s]" %
+                logger.error('Expecting a dict but something else was '
+                             'received: %s', (auth_result.content,))
+            logger.error('[%s] Wrong password (HAMK): [%s]' %
                          (auth_result.status_code, error))
             raise SRPAuthBadUserOrPassword()
 
         if auth_result.status_code not in (200,):
-            logger.error("No valid response (HAMK): "
-                         "Status code = %s. Content = %r" %
+            logger.error('No valid response (HAMK): '
+                         'Status code = %s. Content = %r' %
                          (auth_result.status_code, auth_result.content))
             raise SRPAuthBadStatusCode()
 
@@ -173,15 +152,15 @@ class SRPAuth(object):
     def _extract_data(self, json_content):
 
         try:
-            M2 = json_content.get("M2", None)
-            uuid = json_content.get("id", None)
-            token = json_content.get("token", None)
+            M2 = json_content.get('M2', None)
+            uuid = json_content.get('id', None)
+            token = json_content.get('token', None)
         except Exception as e:
             logger.error(e)
             raise SRPAuthBadDataFromServer()
 
         if M2 is None or uuid is None:
-            logger.error("Something went wrong. Content = %r" %
+            logger.error('Something went wrong. Content = %r' %
                          (json_content,))
             raise SRPAuthBadDataFromServer()
 
@@ -189,67 +168,31 @@ class SRPAuth(object):
 
     def _verify_session(self, user, M2):
 
-        logger.debug("Verifying session...")
+        logger.debug('Verifying session...')
         try:
             unhex_M2 = _safe_unhexlify(M2)
         except TypeError:
-            logger.error("Bad data from server (HAWK)")
+            logger.error('Bad data from server (HAMK)')
             raise SRPAuthBadDataFromServer()
 
         user.verify_session(unhex_M2)
 
         if not user.authenticated():
-            logger.error("Auth verification failed.")
+            logger.error('Auth verification failed.')
             raise SRPAuthVerificationFailed()
-        logger.debug("Session verified.")
+        logger.debug('Session verified.')
 
-        session_id = self._session.cookies.get(self.SESSION_ID_KEY, None)
+        session_id = self._session.cookies.get('_session_id', None)
         if not session_id:
-            logger.error("Bad cookie from server (missing _session_id)")
+            logger.error('Bad cookie from server (missing _session_id)')
             raise SRPAuthNoSessionId()
 
-        logger.debug("SUCCESS LOGIN")
+        logger.debug('SUCCESS LOGIN')
         return session_id
-
-    def change_password(self, current_password, new_password):
-
-        if current_password != self._password:
-            raise SRPAuthBadUserOrPassword
-
-        url = "%s/%s/users/%s.json" % (
-            self.api_uri,
-            self.api_version,
-            self.get_uuid())
-
-        salt, verifier = _srp.create_salted_verification_key(
-            self._username.encode('utf-8'), new_password.encode('utf-8'),
-            self._hashfun, self._ng)
-
-        cookies = {self.SESSION_ID_KEY: self._session_id}
-        headers = {
-            self.AUTHORIZATION_KEY:
-            "Token token={0}".format(self.get_token())
-        }
-        user_data = {
-            self.USER_VERIFIER_KEY: binascii.hexlify(verifier),
-            self.USER_SALT_KEY: binascii.hexlify(salt)
-        }
-
-        change_password = self._session.put(
-            url, data=user_data,
-            verify=self.ca_cert_path,
-            cookies=cookies,
-            timeout=REQUEST_TIMEOUT,
-            headers=headers)
-
-        change_password.raise_for_status()
-
-        self._password = new_password
 
     def authenticate(self, username, password):
 
-        self._username = username
-        self._password = password
+        self.reset_session()
 
         user, A = self._authentication_preprocessing(username, password)
         salt_B = self._start_authentication(username, A)
@@ -263,41 +206,122 @@ class SRPAuth(object):
 
         return SRPSession(username, token, uuid, session_id)
 
-    def logout(self, session_id):
-        logger.debug("Starting logout...")
+    def logout(self):
+        logger.debug('Starting logout...')
 
         if self.session_id is None:
-            logger.debug("Already logged out")
+            logger.debug('Already logged out')
             return
 
-        logout_url = "%s/%s/%s/" % (self.api_uri,
+        logout_url = '%s/%s/%s/' % (self.api_uri,
                                     self.api_version,
-                                    "logout")
+                                    'logout')
         try:
             self._session.delete(logout_url,
                                  data=self.session_id,
                                  verify=self.ca_cert_path,
-                                 timeout=REQUEST_TIMEOUT)
+                                 timeout=30)
         except Exception as e:
-            logger.warning("Something went wrong with the logout: %r" %
+            logger.warning('Something went wrong with the logout: %r' %
                            (e,))
             raise
         else:
-            self.session_id(None)
-            self.set_uuid(None)
-            self.set_token(None)
-            # Also reset the session
-            self._session = self._fetcher.session()
-            logger.debug("Successfully logged out.")
+            logger.debug('Successfully logged out.')
 
-    def is_authenticated(self, user):
+    def change_password(self,
+                        username,
+                        current_password,
+                        new_password,
+                        token,
+                        uuid):
 
-        if user is not None:
-            return user.authenticated()
+        if self.session_id is None:
+            logger.debug('Already logged out')
+            return
 
-        return False
+        url = '%s/%s/users/%s.json' % (
+            self.api_uri,
+            self.api_version,
+            uuid)
+
+        salt, verifier = srp.create_salted_verification_key(
+            username, new_password.encode('utf-8'),
+            srp.SHA256, srp.NG_1024)
+
+        cookies = {'_session_id': self.session_id}
+        headers = {
+            'Authorization':
+            'Token token={0}'.format(token)
+        }
+        user_data = {
+            'user[password_verifier]': binascii.hexlify(verifier),
+            'user[password_salt]': binascii.hexlify(salt)
+        }
+
+        change_password = self._session.put(
+            url, data=user_data,
+            verify=self.ca_cert_path,
+            cookies=cookies,
+            timeout=30,
+            headers=headers)
+
+        change_password.raise_for_status()
+
+    def register(self, username, password):
+        self.reset_session()
+
+        username = username.encode('utf-8')
+        password = password.encode('utf-8')
+
+        validate_username(username)
+
+        salt, verifier = srp.create_salted_verification_key(
+            username,
+            password,
+            srp.SHA256,
+            srp.NG_1024)
+
+        user_data = {
+            'user[login]': username,
+            'user[password_verifier]': binascii.hexlify(verifier),
+            'user[password_salt]': binascii.hexlify(salt)
+        }
+
+        url = "%s/%s/users" % (
+            self.api_uri,
+            self.api_version)
+
+        logger.debug("Registering user: %s" % username)
+
+        try:
+            response = self._session.post(
+                url,
+                data=user_data,
+                timeout=30,
+                verify=self.ca_cert_path)
+
+        except requests.exceptions.RequestException as exc:
+            logger.error(exc.message)
+
+        if response.status_code != 200:
+            try:
+                json_content = json.loads(response.content)
+                error_msg = json_content.get("errors").get("login")[0]
+                if not error_msg.istitle():
+                    error_msg = "%s %s" % (username, error_msg)
+                logger.error(error_msg)
+            except Exception as e:
+                logger.error("Unknown error: %s" % e.message)
+
+        return response.status_code
 
 
 def _safe_unhexlify(val):
     return binascii.unhexlify(val) \
         if (len(val) % 2 == 0) else binascii.unhexlify('0' + val)
+
+
+def validate_username(username):
+    accepted_characters = '^[a-z0-9\-\_\.]*$'
+    if not re.match(accepted_characters, username):
+        raise ValueError('Only lowercase letters, digits, . - and _ allowed.')

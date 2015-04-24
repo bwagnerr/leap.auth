@@ -1,7 +1,7 @@
 import unittest
 from leap.exceptions import SRPAuthBadUserOrPassword, SRPAuthConnectionError
 from leap.srp_auth import SRPAuth
-from leap.test.support.srp_server_session import mock_session
+from leap.test.support.srp_server_session import srp_server_session
 
 
 class TestSRPAuth(unittest.TestCase):
@@ -12,9 +12,13 @@ class TestSRPAuth(unittest.TestCase):
         self.username = 'test'
         self.password = 'testtest'
 
-        self.srp_auth = SRPAuth(self.api_uri, self.ca_cert_path)
-        mock_session(self.srp_auth, self.username, self.password)
+        def reset_to_test_session():
+            return srp_server_session(self.srp_auth,
+                                      self.username,
+                                      self.password)
 
+        self.srp_auth = SRPAuth(self.api_uri, self.ca_cert_path)
+        self.srp_auth.reset_session = reset_to_test_session
 
     def test_auth_successful(self):
 
@@ -22,14 +26,14 @@ class TestSRPAuth(unittest.TestCase):
 
         self.assertEqual(session.username, self.username)
 
-
     def test_auth_cant_connect_to_server(self):
 
-        mock_session(self.srp_auth, connection_error=True)
+        def connection_error_test_session():
+            return srp_server_session(self.srp_auth, connection_error=True)
+        self.srp_auth.reset_session = connection_error_test_session
 
         with self.assertRaises(SRPAuthConnectionError):
             self.srp_auth.authenticate(self.username, self.password)
-
 
     def test_auth_wrong_password(self):
         password = 'doesnotexist'
