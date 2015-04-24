@@ -221,6 +221,7 @@ class SRPAuth(object):
                                  data=self.session_id,
                                  verify=self.ca_cert_path,
                                  timeout=30)
+            self.reset_session()
         except Exception as e:
             logger.warning('Something went wrong with the logout: %r' %
                            (e,))
@@ -303,7 +304,7 @@ class SRPAuth(object):
         except requests.exceptions.RequestException as exc:
             logger.error(exc.message)
 
-        if response.status_code != 200:
+        if not response.ok:
             try:
                 json_content = json.loads(response.content)
                 error_msg = json_content.get("errors").get("login")[0]
@@ -313,7 +314,7 @@ class SRPAuth(object):
             except Exception as e:
                 logger.error("Unknown error: %s" % e.message)
 
-        return response.status_code
+        return response.ok
 
 
 def _safe_unhexlify(val):
