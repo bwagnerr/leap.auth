@@ -17,9 +17,10 @@ setup(name='leap-srp',
       packages=[
         'leap',
       ],
-      test_suite='nose.collector',
       install_requires=[
           "srp",
           "requests"
-      ]
+      ],
+      test_suite='nose.collector',
+      tests_require=['nose']
 )
