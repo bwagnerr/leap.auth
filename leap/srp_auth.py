@@ -1,6 +1,6 @@
 import binascii
 import logging
-
+import os.path
 import requests
 import srp
 import json
@@ -26,9 +26,10 @@ logger = logging.getLogger(__name__)
 class SRPAuth(object):
 
     def __init__(self, api_uri, ca_cert_path, api_version=1):
-
         self.api_uri = api_uri
         self.api_version = api_version
+        if not os.path.isfile(ca_cert_path):
+            raise ValueError('{0} is not a valid file'.format(ca_cert_path))
         self.ca_cert_path = ca_cert_path
 
     def reset_session(self):
@@ -303,6 +304,7 @@ class SRPAuth(object):
 
         except requests.exceptions.RequestException as exc:
             logger.error(exc.message)
+            raise
 
         if not response.ok:
             try:
