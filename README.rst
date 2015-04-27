@@ -1,14 +1,15 @@
 ***************
-LEAP SRP client
-***************
+LEAP Authentication client
+**************************
 
 This library can be used to authenticate and manage passwords in a `LEAP <https://leap.se/>`_ platform.
+It uses the `Secure Remote Password protocol <http://en.wikipedia.org/wiki/Secure_Remote_Password_protocol>`_.
 
 To install it:
 
 .. code-block:: shell
 
-    pip install leap.auth
+    $ pip install leap.auth
 
 To use it:
 
