@@ -1,14 +1,19 @@
+import os
 import unittest
 from leap.exceptions import SRPAuthBadUserOrPassword, SRPAuthConnectionError
 from leap.srp_auth import SRPAuth
 from leap.test.support.srp_server_session import srp_server_session
 
 
+base_folder = os.path.dirname(os.path.abspath(__file__))
+cert_path = base_folder + '/cert.crt'
+
+
 class TestSRPAuth(unittest.TestCase):
 
     def setUp(self):
         self.api_uri = 'https://testapi:4430'
-        self.ca_cert_path = 'cert'
+        self.ca_cert_path = cert_path
         self.username = 'test'
         self.password = 'testtest'
 
