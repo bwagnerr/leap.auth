@@ -9,12 +9,12 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup(name='leap-srp',
-      version='0.1',
-      description='Library to authenticate with a leap platform instance',
-      long_description=read('README.md'),
-      author='Thoughtworks',
-      author_email='pixelated-team@thoughtworks.com',
-      url='http://leap.se',
+      version='0.1.2',
+      description='Library to authenticate with a LEAP platform',
+      long_description=read('README.rst'),
+      author='Pixelated Project',
+      author_email='team@pixelated-project.org',
+      url='http://github.com/pixelated-project/leap_srp',
       packages=[
           'leap'
       ],
@@ -23,4 +23,5 @@ setup(name='leap-srp',
           'requests'
       ],
       test_suite='nose.collector',
-      tests_require=['nose'])
+      tests_require=['nose'],
+      include_package_data=True)
