@@ -1,7 +1,7 @@
 import os
 import unittest
 from leap.exceptions import SRPAuthBadUserOrPassword, SRPAuthConnectionError
-from leap.srp_auth import SRPAuth
+from leap.auth import SRPAuth
 from leap.test.support.srp_server_session import srp_server_session
 
 

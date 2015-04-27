@@ -8,13 +8,13 @@ To install it:
 
 .. code-block:: shell
 
-    pip install leap-srp
+    pip install leap.auth
 
 To use it:
 
 .. code-block:: python
 
-    from leap.srp_auth import SRPAuth
+    from leap.auth import SRPAuth
 
     api_uri = 'https://api.leap.platform:4430/'
     ca_cert_path = './path_to_certificate.crt'

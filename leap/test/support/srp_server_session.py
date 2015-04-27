@@ -3,7 +3,7 @@ import requests
 import json
 import srp
 from requests.models import Response
-from leap.srp_auth import _safe_unhexlify
+from leap.auth import _safe_unhexlify
 
 
 def srp_server_session(srp_auth_instance,
