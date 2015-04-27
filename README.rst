@@ -6,12 +6,14 @@ This library can be used to authenticate and manage passwords in a `LEAP <https:
 
 To install it:
 
-.. code-block:: bash
+.. code-block:: shell
+
     pip install leap-srp
 
 To use it:
 
 .. code-block:: python
+
     from leap.srp_auth import SRPAuth
 
     api_uri = 'https://api.leap.platform:4430/'
