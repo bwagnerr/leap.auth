@@ -1,0 +1,15 @@
+Source: leap-auth
+Maintainer: Pixelated Project <team@pixelated-project.org>
+Section: python
+Priority: optional
+Build-Depends: python-setuptools (>= 0.6b3), python-all (>= 2.6.6-3), debhelper (>= 7.4.3), dh-python
+Standards-Version: 3.9.1
+Homepage: http://pixelated-project.org
+Vcs-Git: https://github.com/pixelated-project/leap-auth.git
+Vcs-Browser: https://github.com/pixelated-project/leap-auth
+X-Python-Version: >= 2.7
+
+Package: leap-auth
+Architecture: all
+Depends: python (>= 2.7), python (<< 2.8), python-srp, python-requests (>= 2.0.0)
+Description: Library to authenticate with a LEAP platform
