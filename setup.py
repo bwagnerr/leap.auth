@@ -16,6 +16,7 @@ setup(name='leap.auth',
       author='Pixelated Project',
       author_email='team@pixelated-project.org',
       url='http://github.com/pixelated-project/leap_auth',
+      namespace_packages=['leap'],
       packages=[
           'leap'
       ],
