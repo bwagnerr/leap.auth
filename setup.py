@@ -9,7 +9,7 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup(name='leap.auth',
-      version='0.1.0',
+      version='0.1.2',
       description='Library to authenticate with a LEAP platform',
       long_description=read('README.rst'),
       license="GNU Affero General Public License v3",
