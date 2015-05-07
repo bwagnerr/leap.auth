@@ -6,14 +6,14 @@ from leap.test.support.srp_server_session import srp_server_session
 
 
 base_folder = os.path.dirname(os.path.abspath(__file__))
-cert_path = base_folder + '/cert.crt'
+verify_certificate = base_folder + '/cert.crt'
 
 
 class TestSRPAuth(unittest.TestCase):
 
     def setUp(self):
         self.api_uri = 'https://testapi:4430'
-        self.ca_cert_path = cert_path
+        self.verify_certificate = verify_certificate
         self.username = 'test'
         self.password = 'testtest'
 
@@ -22,14 +22,20 @@ class TestSRPAuth(unittest.TestCase):
                                       self.username,
                                       self.password)
 
-        self.srp_auth = SRPAuth(self.api_uri, self.ca_cert_path)
+        self.srp_auth = SRPAuth(self.api_uri, self.verify_certificate)
         self.srp_auth.reset_session = reset_to_test_session
 
-    def test_auth_successful(self):
+    def test_auth_accepts_valid_ca_path(self):
+        srp_auth = SRPAuth(self.api_uri, self.verify_certificate)
+        self.assertEqual(srp_auth.verify_certificate, self.verify_certificate)
 
-        session = self.srp_auth.authenticate(self.username, self.password)
+    def test_auth_errors_invalid_ca_path(self):
+        with self.assertRaises(ValueError):
+            self.srp_auth = SRPAuth(self.api_uri, '')
 
-        self.assertEqual(session.username, self.username)
+    def test_auth_accepts_ca_boolean(self):
+        srp_auth = SRPAuth(self.api_uri, True)
+        self.assertTrue(srp_auth.verify_certificate)
 
     def test_auth_cant_connect_to_server(self):
 
@@ -39,6 +45,10 @@ class TestSRPAuth(unittest.TestCase):
 
         with self.assertRaises(SRPAuthConnectionError):
             self.srp_auth.authenticate(self.username, self.password)
+
+    def test_auth_successful(self):
+        session = self.srp_auth.authenticate(self.username, self.password)
+        self.assertEqual(session.username, self.username)
 
     def test_auth_wrong_password(self):
         password = 'doesnotexist'

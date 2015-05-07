@@ -25,12 +25,17 @@ logger = logging.getLogger(__name__)
 
 class SRPAuth(object):
 
-    def __init__(self, api_uri, ca_cert_path, api_version=1):
+    def __init__(self, api_uri, verify_certificate=True, api_version=1):
         self.api_uri = api_uri
         self.api_version = api_version
-        if not os.path.isfile(ca_cert_path):
-            raise ValueError('{0} is not a valid file'.format(ca_cert_path))
-        self.ca_cert_path = ca_cert_path
+
+        if verify_certificate is None:
+            verify_certificate = True
+
+        if isinstance(verify_certificate, (str, unicode)) and not os.path.isfile(verify_certificate):
+            raise ValueError('Path {0} is not a valid file'.format(verify_certificate))
+
+        self.verify_certificate = verify_certificate
 
     def reset_session(self):
         adapter = HTTPAdapter(max_retries=50)
@@ -62,11 +67,11 @@ class SRPAuth(object):
                  self.api_version,
                  'sessions')
 
-            ca_cert_path = self.ca_cert_path
+            verify_certificate = self.verify_certificate
 
             init_session = self._session.post(sessions_url,
                                               data=auth_data,
-                                              verify=ca_cert_path,
+                                              verify=verify_certificate,
                                               timeout=30)
         except requests.exceptions.ConnectionError as e:
             logger.error('No connection made (salt): {0!r}'.format(e))
@@ -122,7 +127,7 @@ class SRPAuth(object):
         try:
             auth_result = self._session.put(auth_url,
                                             data=auth_data,
-                                            verify=self.ca_cert_path,
+                                            verify=self.verify_certificate,
                                             timeout=30)
         except requests.exceptions.ConnectionError as e:
             logger.error('No connection made (HAMK): %r' % (e,))
@@ -220,7 +225,7 @@ class SRPAuth(object):
         try:
             self._session.delete(logout_url,
                                  data=self.session_id,
-                                 verify=self.ca_cert_path,
+                                 verify=self.verify_certificate,
                                  timeout=30)
             self.reset_session()
         except Exception as e:
@@ -262,7 +267,7 @@ class SRPAuth(object):
 
         change_password = self._session.put(
             url, data=user_data,
-            verify=self.ca_cert_path,
+            verify=self.verify_certificate,
             cookies=cookies,
             timeout=30,
             headers=headers)
@@ -300,7 +305,7 @@ class SRPAuth(object):
                 url,
                 data=user_data,
                 timeout=30,
-                verify=self.ca_cert_path)
+                verify=self.verify_certificate)
 
         except requests.exceptions.RequestException as exc:
             logger.error(exc.message)
