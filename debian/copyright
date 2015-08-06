@@ -1,0 +1,8 @@
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: leap-auth
+Upstream-Contact: Pixelated Team <team@pixelated-project.org>
+Source: https://github.com/pixelated/leap_auth
+
+Files: *
+Copyright: 2015 Thoughtworks inc.
+License: AGPL
