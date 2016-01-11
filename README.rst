@@ -38,7 +38,7 @@ To use it:
     auth.token
 
     # changes the authenticated user password using the authentication data
-    srp_auth.change_password(username, current_password, new_password, auth.token, auth.uuid)
+    srp_auth.change_password(auth.username, password, new_password, auth.token, auth.uuid)
 
     # deletes the session on the server and resets the session locally
     srp_auth.logout()
